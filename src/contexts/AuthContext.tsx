@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useReducer, ReactNode } from 'react';
 import { AuthState, User } from '../types';
+import { authService, LoginData, RegisterData } from '../services/authService';
 
 type AuthAction =
   | { type: 'LOGIN_START' }
@@ -67,58 +68,52 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const login = async (email: string, password: string) => {
     dispatch({ type: 'LOGIN_START' });
-    const users = getUsers();
-
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 800));
-
-    const user = users.find(u => u.email === email && u.password === password);
-    if (user) {
-      console.log("User found:", user.id);
-      localStorage.setItem('user', JSON.stringify(user));
-      dispatch({ type: 'LOGIN_SUCCESS', payload: user });
-    } else {
+    
+    try {
+      const loginData: LoginData = { email, password };
+      const response = await authService.login(loginData);
+      dispatch({ type: 'LOGIN_SUCCESS', payload: response.user });
+    } catch (error: any) {
       dispatch({ type: 'LOGIN_FAILURE' });
-      throw new Error('Invalid credentials');
+      throw new Error(error.response?.data?.non_field_errors?.[0] || 'Invalid credentials');
     }
   };
 
   const register = async (name: string, email: string, password: string) => {
     dispatch({ type: 'REGISTER_START' });
 
-    await new Promise(resolve => setTimeout(resolve, 800));
-
-    const user: User = {
-      id: Date.now().toString(),
-      name,
-      email,
-      password,
-    };
-
-    const users = getUsers();
-    const exists = users.some(u => u.email === user.email);
-    if (exists) {
+    try {
+      const [firstName, ...lastNameParts] = name.split(' ');
+      const lastName = lastNameParts.join(' ');
+      
+      const registerData: RegisterData = {
+        email,
+        username: email,
+        first_name: firstName,
+        last_name: lastName,
+        password,
+        password_confirm: password,
+      };
+      
+      const response = await authService.register(registerData);
+      dispatch({ type: 'REGISTER_SUCCESS', payload: response.user });
+    } catch (error: any) {
       dispatch({ type: 'REGISTER_FAILURE' });
-      throw new Error('Email already registered');
+      const errorMessage = error.response?.data?.email?.[0] || 
+                          error.response?.data?.non_field_errors?.[0] || 
+                          'Registration failed';
+      throw new Error(errorMessage);
     }
-
-    users.push(user);
-    saveUsers(users);
-    localStorage.setItem('user', JSON.stringify(user));
-    dispatch({ type: 'REGISTER_SUCCESS', payload: user });
   };
+  
   const updateUser = (user: User) => {
-    localStorage.setItem('user', JSON.stringify(user));
-    dispatch({ type: 'UPDATE_USER', payload: user });
-
-    // also update users[] in localStorage so changes persist across logins
-    const users = getUsers();
-    const updatedUsers = users.map(u => (u.id === user.id ? user : u));
-    saveUsers(updatedUsers);
+    authService.updateProfile(user).then((updatedUser) => {
+      dispatch({ type: 'UPDATE_USER', payload: updatedUser });
+    });
   };
 
   const logout = () => {
-    localStorage.removeItem('user');
+    authService.logout();
     dispatch({ type: 'LOGOUT' });
   };
 
@@ -128,14 +123,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     </AuthContext.Provider>
   );
 };
-// Helpers to manage a simple users store in localStorage
-function getUsers(): User[] {
-  return JSON.parse(localStorage.getItem('users') || '[]') as User[];
-}
-
-function saveUsers(users: User[]): void {
-  localStorage.setItem('users', JSON.stringify(users));
-}
 
 export const useAuth = () => {
   const context = useContext(AuthContext);

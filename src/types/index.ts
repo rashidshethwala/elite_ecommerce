@@ -15,13 +15,22 @@ export interface Product {
 export interface CartItem {
   product: Product;
   quantity: number;
+  id: number;
 }
 
 export interface User {
   id: string;
-  name: string;
+  username: string;
+  first_name: string;
+  last_name: string;
   email: string;
-  password: string; // In a real app, passwords should be hashed and handled securely
+  phone?: string;
+  address?: string;
+}
+
+// Helper to get full name
+export const getUserFullName = (user: User): string => {
+  return `${user.first_name} ${user.last_name}`.trim();
 }
 
 export interface AuthState {
@@ -34,6 +43,7 @@ export interface CartState {
   items: CartItem[];
   total: number;
   itemCount: number;
+  isLoading: boolean;
 }
 
 export interface FilterState {

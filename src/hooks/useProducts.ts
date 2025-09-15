@@ -1,10 +1,15 @@
 import { useState, useMemo } from 'react';
 import { Product, FilterState } from '../types';
-import { products, sortOptions } from '../data/products';
+import { sortOptions } from '../data/products';
+import { productService } from '../services/productService';
+import { useEffect } from 'react';
 
 const ITEMS_PER_PAGE = 8;
 
 export const useProducts = () => {
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [totalCount, setTotalCount] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
   const [filters, setFilters] = useState<FilterState>({
     category: 'All',
@@ -15,48 +20,54 @@ export const useProducts = () => {
     sortBy: 'featured',
   });
 
+  // Fetch products from API
+  useEffect(() => {
+    const fetchProducts = async () => {
+      setLoading(true);
+      try {
+        const orderingMap: Record<string, string> = {
+          'featured': '-featured,-rating',
+          'price-low': 'price',
+          'price-high': '-price',
+          'rating': '-rating',
+          'name': 'name',
+        };
+
+        const response = await productService.getProducts({
+          category: filters.category,
+          search: filters.searchQuery,
+          ordering: orderingMap[filters.sortBy],
+          featured: filters.sortBy === 'featured' ? undefined : undefined,
+          in_stock: filters.inStock || undefined,
+          page: currentPage,
+        });
+
+        setProducts(response.results);
+        setTotalCount(response.count);
+      } catch (error) {
+        console.error('Error fetching products:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProducts();
+  }, [filters, currentPage]);
+
   const filteredProducts = useMemo(() => {
-    let filtered = products.filter(product => {
+    let filtered = products.filter((product: Product) => {
       const matchesCategory = filters.category === 'All' || product.category === filters.category;
       const matchesPrice = product.price >= filters.priceRange[0] && product.price <= filters.priceRange[1];
       const matchesRating = product.rating >= filters.rating;
       const matchesStock = !filters.inStock || product.inStock;
-      const matchesSearch = !filters.searchQuery || 
-        product.name.toLowerCase().includes(filters.searchQuery.toLowerCase()) ||
-        product.description.toLowerCase().includes(filters.searchQuery.toLowerCase()) ||
-        product.tags.some(tag => tag.toLowerCase().includes(filters.searchQuery.toLowerCase()));
 
-      return matchesCategory && matchesPrice && matchesRating && matchesStock && matchesSearch;
+      return matchesCategory && matchesPrice && matchesRating && matchesStock;
     });
 
-    // Apply sorting
-    return filtered.sort((a, b) => {
-      switch (filters.sortBy) {
-        case 'featured':
-          if (a.featured && !b.featured) return -1;
-          if (!a.featured && b.featured) return 1;
-          return b.rating - a.rating; // Secondary sort by rating
-        case 'price-low':
-          return a.price - b.price;
-        case 'price-high':
-          return b.price - a.price;
-        case 'rating':
-          return b.rating - a.rating;
-        case 'name':
-          return a.name.localeCompare(b.name);
-        default:
-          return 0;
-      }
-    });
+    return filtered;
   }, [filters]);
 
-  const totalPages = Math.ceil(filteredProducts.length / ITEMS_PER_PAGE);
-  
-  const paginatedProducts = useMemo(() => {
-    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
-    const endIndex = startIndex + ITEMS_PER_PAGE;
-    return filteredProducts.slice(startIndex, endIndex);
-  }, [filteredProducts, currentPage]);
+  const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE);
 
   const updateFilters = (newFilters: Partial<FilterState>) => {
     setFilters(prev => ({ ...prev, ...newFilters }));
@@ -64,13 +75,14 @@ export const useProducts = () => {
   };
 
   return {
-    products: paginatedProducts,
-    filteredCount: filteredProducts.length,
+    products: filteredProducts,
+    filteredCount: totalCount,
     totalPages,
     currentPage,
     setCurrentPage,
     filters,
     updateFilters,
     sortOptions,
+    loading,
   };
 };

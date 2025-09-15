@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useReducer, ReactNode, useEffect } from 'react';
 import { WishlistState, Product } from '../types';
 import { useAuth } from './AuthContext';
+import { wishlistService } from '../services/wishlistService';
 
 type WishlistAction =
   | { type: 'ADD_ITEM'; payload: Product }
@@ -56,36 +57,40 @@ export const WishlistProvider: React.FC<{ children: ReactNode }> = ({ children }
   // Load wishlist from localStorage when user changes
   useEffect(() => {
     if (user) {
-      const savedWishlist = localStorage.getItem(`wishlist_${user.id}`);
-      if (savedWishlist) {
-        try {
-          const wishlistItems = JSON.parse(savedWishlist);
-          dispatch({ type: 'LOAD_WISHLIST', payload: wishlistItems });
-        } catch (error) {
-          console.error('Error loading wishlist from localStorage:', error);
-        }
-      }
+      wishlistService.getWishlist()
+        .then((wishlistItems) => {
+          const products = wishlistItems.map(item => item.product);
+          dispatch({ type: 'LOAD_WISHLIST', payload: products });
+        })
+        .catch((error) => {
+          console.error('Error loading wishlist:', error);
+        });
     } else {
       // Clear wishlist when user logs out
       dispatch({ type: 'CLEAR_WISHLIST' });
     }
   }, [user]);
 
-  // Save wishlist to localStorage whenever it changes
-  useEffect(() => {
-    if (user) {
-      if (state.items.length > 0) {
-        localStorage.setItem(`wishlist_${user.id}`, JSON.stringify(state.items));
-      }
+  const addItem = async (product: Product) => {
+    if (!user) return;
+    
+    try {
+      await wishlistService.addToWishlist(product.id);
+      dispatch({ type: 'ADD_ITEM', payload: product });
+    } catch (error) {
+      console.error('Error adding item to wishlist:', error);
     }
-  }, [state.items, user]);
-
-  const addItem = (product: Product) => {
-    dispatch({ type: 'ADD_ITEM', payload: product });
   };
 
-  const removeItem = (id: string) => {
-    dispatch({ type: 'REMOVE_ITEM', payload: id });
+  const removeItem = async (id: string) => {
+    if (!user) return;
+    
+    try {
+      await wishlistService.removeFromWishlist(id);
+      dispatch({ type: 'REMOVE_ITEM', payload: id });
+    } catch (error) {
+      console.error('Error removing item from wishlist:', error);
+    }
   };
 
   const clearWishlist = () => {

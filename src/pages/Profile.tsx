@@ -1,15 +1,17 @@
 import React, { useState } from 'react';
 import { User, Mail, Phone, MapPin, Edit2, Save, X } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { getUserFullName } from '../types';
 
 const Profile: React.FC = () => {
   const { user, updateUser } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({
-    name: user?.name || '',
+    first_name: user?.first_name || '',
+    last_name: user?.last_name || '',
     email: user?.email || '',
-    phone: '+1 (555) 123-4567',
-    address: '123 Main St, San Francisco, CA 94102'
+    phone: user?.phone || '',
+    address: user?.address || ''
   });
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -28,10 +30,11 @@ const Profile: React.FC = () => {
 
   const handleCancel = () => {
     setFormData({
-      name: user?.name || '',
+      first_name: user?.first_name || '',
+      last_name: user?.last_name || '',
       email: user?.email || '',
-      phone: '+1 (555) 123-4567',
-      address: '123 Main St, San Francisco, CA 94102'
+      phone: user?.phone || '',
+      address: user?.address || ''
     });
     setIsEditing(false);
   };
@@ -52,7 +55,7 @@ const Profile: React.FC = () => {
                 <User className="w-12 h-12 text-blue-600" />
               </div>
               <h2 className="text-xl font-semibold text-gray-900 mb-2">
-                {user?.name}
+                {getUserFullName(user!)}
               </h2>
               <p className="text-gray-600 mb-4">{user?.email}</p>
               <div className="space-y-2">
@@ -105,20 +108,40 @@ const Profile: React.FC = () => {
                 <div className="grid md:grid-cols-2 gap-6">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Full Name
+                      First Name
                     </label>
                     {isEditing ? (
                       <input
                         type="text"
-                        name="name"
-                        value={formData.name}
+                        name="first_name"
+                        value={formData.first_name}
                         onChange={handleInputChange}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                       />
                     ) : (
                       <div className="flex items-center space-x-2 p-3 bg-gray-50 rounded-lg">
                         <User className="w-4 h-4 text-gray-500" />
-                        <span className="text-gray-900">{formData.name}</span>
+                        <span className="text-gray-900">{formData.first_name}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Last Name
+                    </label>
+                    {isEditing ? (
+                      <input
+                        type="text"
+                        name="last_name"
+                        value={formData.last_name}
+                        onChange={handleInputChange}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      />
+                    ) : (
+                      <div className="flex items-center space-x-2 p-3 bg-gray-50 rounded-lg">
+                        <User className="w-4 h-4 text-gray-500" />
+                        <span className="text-gray-900">{formData.last_name}</span>
                       </div>
                     )}
                   </div>

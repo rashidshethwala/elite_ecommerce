@@ -4,6 +4,7 @@ import { ShoppingCart, User, Search, Menu, X, Heart } from 'lucide-react';
 import { useCart } from '../contexts/CartContext';
 import { useWishlist } from '../contexts/WishlistContext';
 import { useAuth } from '../contexts/AuthContext';
+import { getUserFullName } from '../types';
 
 const Header: React.FC = () => {
   const { itemCount } = useCart();
@@ -90,7 +91,7 @@ const Header: React.FC = () => {
               <div className="relative group">
                 <button className="flex items-center space-x-2 p-2 text-gray-600 hover:text-blue-600 transition-colors">
                   <User className="w-5 h-5" />
-                  <span className="hidden sm:block text-sm">{user?.name}</span>
+                  <span className="hidden sm:block text-sm">{getUserFullName(user)}</span>
                 </button>
                 <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
                   <div className="py-2">
